@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Options
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Options:</h1>
+        <br>
+        <h2><a href="/addstudent">Add a New Student</a></h2>
+        <h2><a href="/choosestudent">Edit or Remove a Student</a></h2>
+        <br>
+        <h2><a href="/beltorderinstructor">Make or Edit a Belt Order</a></h2>
+        {% if current_user.role != 'admin' %}
+            <h2><a href="/chooseorderinstructor">View a previous Belt Order</a></h2>
+        {% endif %}
+        <br>
+        {% if current_user.role=='admin' %}
+            <h2><a href="/beltordersend">Send Current Order</a></h2>
+            <p>View in "Make or Edit Belt Order" first</p>
+            <h2><a href="/chooseorderadmin">View a previous Belt Order</a></h2>
+            <br>
+            <h2><a href="/choosearchive">Reinstate a Student from the Archive</a></h2>
+            <br>
+            <h2><a href="/register">Register an Instructor</a></h2>
+            <h2><a href="/chooseinstructor">Edit or Remove an Instructor</a></h2>
+        {% endif %}
+    </div>
+    </div>
+
+{% endblock %}

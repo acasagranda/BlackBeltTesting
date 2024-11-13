@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="initial-scale=1, width=device-width">
+        <link href="/static/style/style.css" rel="stylesheet">
+        <title>Young Brothers Black Belt Test: {% block title %}{% endblock %}</title>
+
+    </head>
+
+    <body>
+
+        {% if get_flashed_messages() %}
+            <header>
+                <div class="alert" role="alert">
+                    {{ get_flashed_messages() | join(" ") }}
+                </div>
+            </header>
+        {% endif %}
+        <br>
+        <div id="top">
+            <img src="/static/images/YBTKD-logo.jpg" alt="Young Brothers" style="width:auto;max-width: 100%;height: auto;display: block;margin-left: auto;margin-right: auto;">
+        </div>
+        <div class="head">
+        <h1>Black Belt Testing</h1>
+        <br>
+        </div>
+        <main class="container py-5 text-center">
+            {% block main %}{% endblock %}
+        </main>
+
+    </body>
+
+</html>
