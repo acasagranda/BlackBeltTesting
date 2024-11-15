@@ -113,6 +113,72 @@ def addtest():
     form.testing_number.data = test.testing_number + 1
     return render_template('addtest.html', form=form)
 
+@app.route('/addtomakeup', methods=['POST'])
+@login_required
+def addtomakeup():
+    studentid = request.form['studentid']
+    studentid = studentid.strip(')').strip('(')
+    if studentid:
+        studentid = int(studentid)
+        student = Student.query.filter_by(id=studentid).first()
+        if student:
+            test = Test.query.order_by(Test.id.desc()).first()
+            if test.testing_date - student.DOB >= timedelta(days=365*18):
+                level = 'Adult'
+            else:
+                level = 'Junior'
+            student_test = StudentTest(student_id=student.id,test_id=test.id,makeup_test=True,level=level)
+            db.session.add(student_test)
+            db.session.commit()
+
+    return redirect(url_for('choosetesters'))
+
+
+@app.route('/addtotest', methods=['POST'])
+@login_required
+def addtotest():
+    studentid = request.form['studentid']
+    studentid = studentid.strip(')').strip('(')
+    if studentid:
+        studentid = int(studentid)
+        student = Student.query.filter_by(id=studentid).first()
+        if student:
+            test = Test.query.order_by(Test.id.desc()).first()
+            if test.testing_date - student.DOB >= timedelta(days=365*18):
+                level = 'Adult'
+            else:
+                level = 'Junior'
+            student_test = StudentTest(student_id=student.id,test_id=test.id,regular_test=True,level=level)
+            db.session.add(student_test)
+            db.session.commit()
+
+    return redirect(url_for('choosetesters'))
+
+
+@app.route("/choosehighranks", methods=['GET','POST'])
+@login_required
+def choosehighranks():
+    test = Test.query.order_by(Test.id.desc()).first()
+    high_ranks = []
+    for studenttest in test.students:
+        student = Student.query.filter_by(id=studenttest.student_id).first()
+        if student.rank >=4 and not studenttest.testing_up:
+            high_ranks.append(student)
+    
+    return render_template('choosehighranks.html', high_ranks=high_ranks)
+
+@app.route("/choosetesters", methods=['GET','POST'])
+@login_required
+def choosetesters():
+    test = Test.query.order_by(Test.id.desc()).first()
+    students_testing = StudentTest.query.filter_by(test_id=test.id).all()
+    testing_set = {student.student_id for student in students_testing}
+    current_students = Student.query.filter_by(current=True).order_by(Student.last_name, Student.first_name).all()
+    students = [student for student in current_students if student.id not in testing_set]
+    return render_template('choosetesters.html', student_list=students)
+
+
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -128,3 +194,19 @@ def options():
     #     flash("You do not have access to this page")
     #     return redirect(url_for('/login'))
     return render_template('options.html')
+
+
+@app.route('/testup', methods=['POST'])
+@login_required
+def testup():
+    studentid = request.form['studentid']
+    studentid = studentid.strip(')').strip('(')
+    if studentid:
+        studentid = int(studentid)
+        student = Student.query.filter_by(id=studentid).first()
+        if student:
+            test = Test.query.order_by(Test.id.desc()).first()
+            student_testing = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
+            student_testing.testing_up = True           
+            db.session.commit()
+    return redirect(url_for('choosehighranks'))

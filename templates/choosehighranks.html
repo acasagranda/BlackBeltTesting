@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Choose High Rank Testers
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose Student who is Testing Up</h1>
+        <form method="POST" action="/testup">
+            <select name="studentid" id="student-select" >
+                <option value="">--Choose a student:--</option>
+                {% for student in high_ranks %}
+                    <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="This student is Testing Up"> 
+        </form>
+        <br><br>
+    </div>
+{% endblock %}
