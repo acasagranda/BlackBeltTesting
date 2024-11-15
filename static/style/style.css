@@ -1,0 +1,39 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    background-color: azure;
+}
+
+.alert {
+    color: red;
+}
+.bigger {
+    font-size: 1.5em;
+}
+.center {
+    text-align: center;
+}
+.column {
+    float:left;
+    width: 25%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+.navlist {
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    box-sizing: border-box;
+    padding: 10px;
+    background: #0055A8;
+    font-size: 20px;
+    text-align: center;
+}
+.navlistlink {
+    color: white;
+}
+.row ::after {
+    content: "";
+    clear: both;
+    display: table;
+}

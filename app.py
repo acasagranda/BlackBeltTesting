@@ -1,7 +1,7 @@
 import os
 # import csv
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -19,7 +19,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-# Add Archive
+
 
 class Certificate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -30,7 +30,7 @@ class Certificate(db.Model):
 
 class School(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True)
+    location = db.Column(db.String(50), unique=True)
     students = db.relationship('Student', backref=db.backref('school'), order_by="Student.last_name,Student.first_name")
     
 
@@ -41,7 +41,8 @@ class Student(db.Model):
     DOB = db.Column(db.DateTime())
     school_id = db.Column(db.Integer, db.ForeignKey('school.id'), nullable=False)
     rank = db.Column(db.Integer)
-    recert = db.Column(db.Integer)
+    recerts = db.Column(db.Integer)
+    current = db.Column(db.Boolean, default=True)
     extra = db.Column(db.String(100))
 
 
@@ -61,7 +62,7 @@ class StudentTest(db.Model):
 
 class Test(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime())
+    testing_date = db.Column(db.DateTime())
     testing_number = db.Column(db.Integer)
     students = db.relationship('StudentTest', backref=db.backref('test'))
 
@@ -86,5 +87,18 @@ def makeme():
     me = User(password_hash=p, role='admin', username='andrea')
     db.session.add(me)
     db.session.commit()
+
+def makenonadmin():
+    p = generate_password_hash('and')
+    me = User(password_hash=p, username='nonadmin')
+    db.session.add(me)
+    db.session.commit()
+
+def starttest():
+    first = Test(testing_date=date(2024, 10, 12),testing_number=100)
+    db.session.add(first)
+    db.session.commit()
+
+
 
 import routes
