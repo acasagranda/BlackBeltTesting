@@ -1,22 +1,22 @@
 {% extends "layout2.html" %}
 
 {% block title %}
-    Choose Testers
+    Choose High Rank Testers
 {% endblock %}
 
 {% block main %}
     <br><br>
     <div class="center">
-        <h1>Choose Testers:</h1>
-        <form method="POST" action="/addtotest">
-            <select name="studentid" id="student-select" style="width: 25%">
+        <h1>Choose Student who is Testing Up</h1>
+        <form method="POST" action="/test_up">
+            <select name="studentid" id="student-select" >
                 <option value="">--Choose a student:--</option>
-                {% for student in student_list %}
+                {% for student in high_ranks %}
                     <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
                 {% endfor %}
             </select>
             <br><br><br>
-            <input type="submit" value="Add this Student to Testing"> &nbsp; <input type="submit" formaction="/addtomakeup" value="Add this student to MakeUp">
+            <input type="submit" value="This student is Testing Up"> 
         </form>
         <br><br>
     </div>

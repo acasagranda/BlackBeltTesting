@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Choose Testers
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose Testers:</h1>
+        <form method="POST" action="/add_to_test">
+            <select name="studentid" id="student-select" style="width: 25%">
+                <option value="">--Choose a student:--</option>
+                {% for student in student_list %}
+                    <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="Add this Student to Testing"> &nbsp; <input type="submit" formaction="/add_to_makeup" value="Add this student to MakeUp">
+        </form>
+        <br><br>
+    </div>
+{% endblock %}

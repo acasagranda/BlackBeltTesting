@@ -1,22 +1,22 @@
 {% extends "layout2.html" %}
 
 {% block title %}
-    Choose High Rank Testers
+    Choose First Test Passers
 {% endblock %}
 
 {% block main %}
     <br><br>
     <div class="center">
-        <h1>Choose Student who is Testing Up</h1>
-        <form method="POST" action="/testup">
-            <select name="studentid" id="student-select" >
+        <h1>Choose Students who did NOT Pass</h1>
+        <form method="POST" action="/move_to_makeup">
+            <select name="studentid" id="student-select" style="width: 25%">
                 <option value="">--Choose a student:--</option>
-                {% for student in high_ranks %}
+                {% for student in student_list %}
                     <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
                 {% endfor %}
             </select>
             <br><br><br>
-            <input type="submit" value="This student is Testing Up"> 
+            <input type="submit" value="Move this Student to Makeup"> &nbsp; <input type="submit" formaction="/add_to_regular_limbo" value="This student hasn't passed yet.">
         </form>
         <br><br>
     </div>

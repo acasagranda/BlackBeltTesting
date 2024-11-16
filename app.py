@@ -56,8 +56,8 @@ class StudentTest(db.Model):
     makeup_test = db.Column(db.Boolean, default=False)
     passed_regular = db.Column(db.Boolean, default=False)
     passed_makeup = db.Column(db.Boolean, default=False)
-    regular_limbo = db.Column(db.Boolean, default=False)
-    makeup_limbo = db.Column(db.Boolean, default=False)
+    regular_limbo = db.Column(db.Boolean, default=False)  # just make limbo
+    makeup_limbo = db.Column(db.Boolean, default=False)   #don;'t need
     
 
 class Test(db.Model):
