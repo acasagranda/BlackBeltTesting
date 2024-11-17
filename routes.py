@@ -1,4 +1,4 @@
-# import csv
+import csv
 # import os
 # import smtplib
 # import string
@@ -76,7 +76,7 @@ def add_student():
             recerts = int(form.recerts.data)
             school_id = form.school_id.data
             which_test = form.which_test.data
-            new_student = Student(first_name=first_name,last_name=last_name,DOB=DOB,rank=rank,recerts=recerts,school_id=school_id)
+            new_student = Student(first_name=first_name.upper(),last_name=last_name.upper(),DOB=DOB,rank=rank,recerts=recerts,school_id=school_id)
             db.session.add(new_student)
             db.session.commit()
             if which_test != "not testing":
@@ -144,7 +144,7 @@ def add_to_regular_limbo():
         student = Student.query.filter_by(id=studentid).first()
         if student:
             test = Test.query.order_by(Test.id.desc()).first()
-            student_test = StudentTest.query.filter_by(id=studentid).filter_by(test_id=test.id).first()
+            student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
             student_test.regular_limbo = True
             db.session.commit()
 
@@ -213,13 +213,24 @@ def first_pass():
 @admin_only
 def first_update_rank():
     test = Test.query.order_by(Test.id.desc()).first()
+    # filename = r"/home/TerryM/dealer.picassolures.com/PassLists/passlist"+str(test.testing_number)+".csv"
+    pass_filename = 'PassLists/passlist' + str(test.testing_number) + ".csv"
+    certif_filename = 'CertificateLists/certificatelist' + str(test.testing_number) + ".csv"
     students_test = [student for student in test.students if (student.regular_test and not student.regular_limbo and not student.passed_regular)]
     for student_test in students_test:
         student_test.passed_regular = True
         student = Student.query.filter_by(id=student_test.student_id).first()
         student.rank, student.recerts = update_rank(student_test, student)
+        full_name = student.first_name + " " + student.last_name
+        with open(pass_filename, 'a', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',')
+            spamwriter.writerow([full_name,student.rank, student.recerts, student_test.level, student.first_name, student.last_name])
         if student.recerts == 0:
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
+            school = School.query.filter_by(id=student.school_id).first()
+            with open(certif_filename, 'a', newline='') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=',')
+                spamwriter.writerow([full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
     db.session.commit()
     flash("Ranks have been updated.")
     return redirect(url_for('options'))
@@ -253,7 +264,7 @@ def move_to_makeup():
         student = Student.query.filter_by(id=studentid).first()
         if student:
             test = Test.query.order_by(Test.id.desc()).first()
-            student_test = StudentTest.query.filter_by(id=studentid).filter_by(test_id=test.id).first()
+            student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
             student_test.regular_test = False
             student_test.makeup_test = True
             db.session.commit()
@@ -276,13 +287,24 @@ def pass_makeups():
     passes = request.form.getlist('status')
     students = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="pass"]
     test = Test.query.order_by(Test.id.desc()).first()
+    # filename = r"/home/TerryM/dealer.picassolures.com/PassLists/passlist"+str(test.testing_number)+".csv"
+    pass_filename = 'MakeupPassLists/makeuppasslist' + str(test.testing_number) + ".csv"
+    certif_filename = 'CertificateLists/certificatelist' + str(test.testing_number) + ".csv"
     for studentid in students:
         student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
         student_test.passed_makeup = True
         student = Student.query.filter_by(id=studentid).first()
         student.rank, student.recerts = update_rank(student_test, student)
+        full_name = student.first_name + " " + student.last_name
+        with open(pass_filename, 'a', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',')
+            spamwriter.writerow([full_name,student.rank, student.recerts, student_test.level, student.first_name, student.last_name])
         if student.recerts == 0:
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
+            school = School.query.filter_by(id=student.school_id).first()
+            with open(certif_filename, 'a', newline='') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=',')
+                spamwriter.writerow([full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
     db.session.commit()
     flash("Passing Makeup students have been updated.")
     return redirect(url_for('options'))

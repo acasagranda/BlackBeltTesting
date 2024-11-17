@@ -32,6 +32,9 @@ body {
 .navlistlink {
     color: white;
 }
+.red {
+    color: red;
+}
 .row ::after {
     content: "";
     clear: both;
