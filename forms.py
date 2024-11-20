@@ -15,7 +15,7 @@ class AddStudentForm(FlaskForm):
     rank = SelectField('Current Rank: ', choices=[
                        'triple stripe', '1', '2', '3', '4', '5', '6', '7', '8'], validators=[DataRequired()])
     recerts = IntegerField('Number of completed Recertifications: ', default=0)
-    DOB  = DateField('Date of Birth: ')
+    DOB  = DateField('Date of Birth: ', validators=[DataRequired()])
     school_id = SelectField('School: ', coerce=int)
     which_test = SelectField('Which test? ', choices=['regular test','makeup test','not testing'])
     submit = SubmitField('Add this student.')

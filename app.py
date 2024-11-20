@@ -52,12 +52,11 @@ class StudentTest(db.Model):
     test_id = db.Column(db.Integer, db.ForeignKey('test.id'), nullable=False)
     level = db.Column(db.String(10), index=True)
     testing_up = db.Column(db.Boolean, default=False)
-    regular_test = db.Column(db.Boolean, default=False)
-    makeup_test = db.Column(db.Boolean, default=False)
+    makeup_test = db.Column(db.Boolean, default=False)    #regular is False, makeup is true
     passed_regular = db.Column(db.Boolean, default=False)
     passed_makeup = db.Column(db.Boolean, default=False)
-    regular_limbo = db.Column(db.Boolean, default=False)  # just make limbo
-    makeup_limbo = db.Column(db.Boolean, default=False)   #don;'t need
+    limbo = db.Column(db.Boolean, default=False)  # just make limbo
+
     
 
 class Test(db.Model):
