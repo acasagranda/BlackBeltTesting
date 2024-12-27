@@ -1,0 +1,34 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Edit Test
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Edit Test:</h1>
+        <div class="bigger">
+            <form action="" method="post">
+                {{ form.hidden_tag() }}
+                <p>
+                    {{ form.testing_date.label }}<br>
+                    {{ form.testing_date(size=42) }}<br>
+                    {% for error in form.testing_date.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
+                </p>
+                <br>
+                <p>
+                    {{ form.testing_number.label }}<br>
+                    {{ form.testing_number(size=10) }}<br>
+                    {% for error in form.testing_number.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
+                </p>
+                <br>
+                <p> {{ form.submit() }}</p>
+            </form>
+        </div>
+    </div>
+{% endblock %}

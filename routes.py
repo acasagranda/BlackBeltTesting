@@ -1,5 +1,5 @@
 import csv
-# import os
+import os
 # import smtplib
 # import string
 
@@ -112,6 +112,7 @@ def add_test():
     if request.method == "POST":
         if form.validate_on_submit():
             testing_date = form.testing_date.data
+            # testing_date = testing_date.date()
             testing_number = form.testing_number.data
             db.session.add(Test(testing_date=testing_date,testing_number=testing_number))
             db.session.commit()
@@ -201,7 +202,7 @@ def choose_high_ranks():
         student = Student.query.filter_by(id=studenttest.student_id).first()
         if student.rank >=4 and not studenttest.testing_up:
             high_ranks.append(student)
-    high_ranks.sort(key = lambda x: [x.last_name, x.first_name])
+    high_ranks.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('choose_high_ranks.html', high_ranks=high_ranks)
 
 @app.route("/choose_testers", methods=['GET','POST'])
@@ -219,6 +220,49 @@ def choose_testers():
 def confirm_first_update():
     return render_template('confirm_first_update.html')
 
+@app.route("/edit_test", methods=['GET', 'POST'], endpoint='edit_test')
+@login_required
+@admin_only
+def edit_test():
+    test = Test.query.order_by(Test.id.desc()).first()
+    form = AddTestForm()
+    if request.method == "POST":
+        if form.validate_on_submit():
+            testing_date = form.testing_date.data
+            testing_number = form.testing_number.data
+            if testing_date != test.testing_date.date() and testing_number != test.testing_number:
+                flash("Instead of editing this test ADD A NEW TEST")
+                return redirect(url_for('options'))
+            if testing_date == test.testing_date.date() and testing_number == test.testing_number:
+                flash("Test has NOT been edited.")
+                return redirect(url_for('options'))
+            if testing_date != test.testing_date.date():
+                test.testing_date = testing_date
+                db.session.commit()
+            if testing_number != test.testing_number:
+                previous_test_number = Test.query.filter_by(testing_number=testing_number).first()
+                if previous_test_number:
+                    flash("This test number has already been used")
+                    return redirect(url_for('options'))
+                
+                if os.path.isfile('PassLists/passlist' + str(test.testing_number) + ".csv"):
+                    os.rename('PassLists/passlist' + str(test.testing_number) + ".csv", 'PassLists/passlist' + str(testing_number) + ".csv")
+                session["pass_filename"] = 'PassLists/passlist' + str(testing_number) + ".csv"
+                if os.path.isfile('CertificateLists/certificatelist' + str(test.testing_number) + ".csv"):
+                    os.rename('CertificateLists/certificatelist' + str(test.testing_number) + ".csv",'CertificateLists/certificatelist' + str(testing_number) + ".csv")
+                session["certif_filename"] = 'CertificateLists/certificatelist' + str(testing_number) + ".csv"
+                if os.path.isfile('MakeupPassLists/makeuppasslist' + str(test.testing_number) + ".csv"):
+                    os.rename('MakeupPassLists/makeuppasslist' + str(test.testing_number) + ".csv",'MakeupPassLists/makeuppasslist' + str(testing_number) + ".csv")
+                session["makeup_filename"] = 'MakeupPassLists/makeuppasslist' + str(testing_number) + ".csv"
+                test.testing_number = testing_number
+                db.session.commit()         
+            flash("Changes to test have been made.")
+            return redirect(url_for('options'))
+    form.testing_number.data = test.testing_number
+    form.testing_date.data = test.testing_date
+    return render_template('edit_test.html', form=form)
+
+
 
 @app.route("/first_pass", methods=['GET','POST'], endpoint='first_pass')
 @login_required
@@ -227,7 +271,7 @@ def first_pass():
     test = Test.query.order_by(Test.id.desc()).first()
     student_ids = [student.student_id for student in test.students if (not student.makeup_test and not student.limbo and not student.passed_regular)]
     students = [Student.query.filter_by(id=studentid).first() for studentid in student_ids]
-    students.sort(key = lambda x: [x.last_name, x.first_name])
+    students.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('first_pass.html', student_list=students)
 
 @app.route("/first_update_rank", methods=['GET','POST'], endpoint='first_update_rank')
@@ -257,7 +301,7 @@ def indiv_first_update():
     test = Test.query.order_by(Test.id.desc()).first()
     student_ids = [student.student_id for student in test.students if student.limbo]
     students = [Student.query.filter_by(id=studentid).first() for studentid in student_ids]
-    students.sort(key= lambda x: [x.last_name, x.first_name])
+    students.sort(key= lambda x: (x.last_name, x.first_name))
     return render_template('indiv_first_update.html', student_list=students)
 
 @app.route("/logout")
@@ -273,7 +317,7 @@ def makeup_pass():
     test = Test.query.order_by(Test.id.desc()).first()
     student_ids = [student.student_id for student in test.students if (student.makeup_test and not student.passed_makeup)]
     students = [Student.query.filter_by(id=studentid).first() for studentid in student_ids]
-    students.sort(key= lambda x: [x.last_name, x.first_name])
+    students.sort(key= lambda x: (x.last_name, x.first_name))
     return render_template('makeup_pass.html', student_list=students)
 
 @app.route('/move_to_makeup', methods=['POST'], endpoint="move_to_makeup")
@@ -348,6 +392,27 @@ def pass_makeups():
     flash("Passing Makeup students have been updated.")
     return redirect(url_for('options'))
 
+
+@app.route('/pattern_count')
+@login_required
+def pattern_count():
+    test = Test.query.order_by(Test.id.desc()).first()
+    juniors = [Student.query.filter_by(id=student.student_id).first() for student in test.students if student.level=="Junior"]
+    adults = [Student.query.filter_by(id=student.student_id).first() for student in test.students if student.level=="Adult"]
+    junior_patterns = [0,[],[],[]]
+    adult_patterns = [0,[],[],[]]
+    ranks = [0,"1ST","2ND","3RD"]
+    for rank in range(1,4):
+        for recert in range(0,3):
+            junior = [student for student in juniors if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]
+            if junior:
+                patterns = len(junior)
+            else:
+                patterns = 0
+            junior_patterns[rank].append(patterns)
+            adult_patterns[rank].append(len([student for student in adults if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]))
+    return render_template('pattern_count.html', adult_patterns=adult_patterns, junior_patterns=junior_patterns, ranks=ranks)
+    
 
 @app.route('/test_count/<testid>')
 @login_required

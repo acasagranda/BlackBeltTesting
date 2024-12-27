@@ -40,3 +40,12 @@ body {
     clear: both;
     display: table;
 }
+.two_columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* columns */
+.two_columns > * {
+    padding:1rem;
+}

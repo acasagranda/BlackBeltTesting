@@ -21,9 +21,9 @@ class AddStudentForm(FlaskForm):
     submit = SubmitField('Add this student.')
 
 class AddTestForm(FlaskForm):
-    testing_date  = DateField('Date: ')
+    testing_date  = DateField('Date: ', format='%Y-%m-%d')
     testing_number = IntegerField('Testing Number: ')
-    submit = SubmitField('Start New Test')
+    submit = SubmitField('Save this Test')
 
 class LoginForm(FlaskForm):
     username = StringField('Username:  ', validators=[DataRequired()])

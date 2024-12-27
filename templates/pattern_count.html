@@ -1,0 +1,39 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Pattern Counts
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Pattern Counts:</h1>
+        <div class="two_columns">
+            <div>
+                {% for rank in range(1,4) %}
+                    <h2>JUNIOR {{ranks[rank]}} DANS:</h2>
+                    {% for patterns in range(3) %}
+                        {% if patterns == 0 %}
+                            <p>{{patterns + 1}} Pattern:  {{junior_patterns[rank][patterns]}}</p>
+                        {% else %}
+                            <p>{{patterns + 1}} Patterns:  {{junior_patterns[rank][patterns]}}</p>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            <div>
+                {% for rank in range(1,4) %}
+                    <h2>ADULT {{ranks[rank]}} DANS:</h2>
+                    {% for patterns in range(3) %}
+                        {% if patterns == 1 %}
+                            <p>{{patterns + 1}} Pattern:  {{adult_patterns[rank][patterns]}}</p>
+                        {% else %}
+                            <p>{{patterns + 1}} Patterns:  {{adult_patterns[rank][patterns]}}</p>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+        <br><br>
+    </div>
+{% endblock %}
