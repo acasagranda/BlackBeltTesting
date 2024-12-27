@@ -8,7 +8,7 @@ from app import app, db, Certificate, School, Student, StudentTest, Test, User, 
 from datetime import datetime, timezone, timedelta
 from flask import request, render_template, flash, redirect, url_for, session
 from flask_login import current_user, login_user, logout_user, login_required
-from forms import AddSchoolForm, AddStudentForm, AddTestForm, LoginForm  #, EmailForm2, PasswordForm2, AddstudentForm2, RegistrationForm2
+from forms import AddSchoolForm, AddStudentForm, AddTestForm, AddUserForm, LoginForm  #, EmailForm2, PasswordForm2, AddstudentForm2, RegistrationForm2
 # from secrets import choice
 
 
@@ -19,11 +19,11 @@ def load_user(id):
 
 
 def admin_only(func):
-    def wrapper():
+    def wrapper(*args, **kwargs):
         if current_user.role != 'admin':
             flash("You do not have access to that page")
             return redirect(url_for('options'))
-        return func()
+        return func(*args, **kwargs)
     return wrapper
 
 
@@ -33,7 +33,7 @@ def login():
     form = LoginForm()
     if request.method == "POST":
         if form.validate_on_submit():
-            user = User.query.filter_by(username=form.username.data).first()
+            user = User.query.filter_by(email=form.email.data).first()
             if user and user.check_password(form.password.data):
                 login_user(user, remember=form.remember.data)
                 test = Test.query.order_by(Test.id.desc()).first()
@@ -46,6 +46,10 @@ def login():
         return redirect(url_for('login'))
 
     return render_template('login.html', form=form)
+
+
+
+
 
 @app.route("/add_school", methods=['GET', 'POST'], endpoint='add_school')
 @login_required
@@ -67,6 +71,7 @@ def add_school():
 def add_student():
     form = AddStudentForm()
     form.school_id.choices = [(school.id, school.location) for school in School.query.order_by(School.location).all()]
+    form.school_id.data = current_user.school_id
     if request.method == 'POST':
         if form.validate_on_submit:
             first_name = form.first_name.data
@@ -147,6 +152,8 @@ def add_test():
 
 #     return redirect(url_for('choose_testers'))
 
+
+#  A student that went to regular testing but has not passed yet is put in limbo
 @app.route('/add_to_limbo', methods=['POST'], endpoint="add_to_limbo")
 @login_required
 @admin_only
@@ -193,6 +200,35 @@ def add_to_test(testid):
     return redirect(url_for('choose_testers'))
 
 
+@app.route("/add_user", methods=['GET', 'POST'], endpoint='add_user')
+@login_required
+@admin_only
+def add_user():
+    form = AddUserForm()
+    form.school_id.choices = [(school.id, school.location) for school in School.query.order_by(School.location).all()]
+    if request.method == 'POST':
+        if form.validate_on_submit:
+            first_name = form.first_name.data
+            last_name = form.last_name.data
+            email = form.email.data
+            school_id = form.school_id.data
+            role = form.role.data
+            duplicate = User.query.filter_by(email=email).first()
+            if duplicate:
+                flash("Email (Username) is already taken")
+                form.data.first_name=first_name
+                form.data.last_name=last_name
+                form.data.school_id=school_id
+                form.role=role
+                return redirect(url_for('add_user', form=form))
+            new_user = User(first_name=first_name,last_name=last_name,email=email,role=role,school_id=school_id)
+            db.session.add(new_user)
+            new_user.set_password(form.temp_password.data)
+            db.session.commit()
+            flash("New User has been added")
+            return redirect(url_for('options'))
+    return render_template('add_user.html', form=form)
+
 @app.route("/choose_high_ranks", methods=['GET','POST'])
 @login_required
 def choose_high_ranks():
@@ -205,6 +241,36 @@ def choose_high_ranks():
     high_ranks.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('choose_high_ranks.html', high_ranks=high_ranks)
 
+
+@app.route("/choose_instructor", methods=['GET','POST'], endpoint='choose_instructor')
+@login_required
+@admin_only
+def choose_instructor():
+    instructors = User.query.filter(User.id != 1).order_by(User.last_name, User.first_name).all()
+    if request.method == "POST":
+        userid = request.form['userid']
+        userid=userid.strip(')').strip('(')
+        return redirect(url_for('edit_instructor', userid=userid))
+    
+    return render_template('choose_instructor.html', instructor_list=instructors)
+
+
+@app.route("/choose_student", methods=['GET','POST'])
+@login_required
+def choose_student():
+    if current_user.role == 'admin':
+        students = Student.query.order_by(Student.last_name, Student.first_name).all()   #  filter_by(current=True)
+    else:
+        students = Student.query.filter_by(school_id=current_user.school_id).filter_by(current=True).order_by(Student.last_name, Student.first_name).all()
+    if request.method == "POST":
+        studentid = request.form['studentid']
+        studentid=studentid.strip(')').strip('(')
+        return redirect(url_for('edit_student', studentid=studentid))
+    
+    return render_template('choose_student.html', student_list=students)
+
+
+
 @app.route("/choose_testers", methods=['GET','POST'])
 @login_required
 def choose_testers():
@@ -214,11 +280,99 @@ def choose_testers():
     students = [student for student in current_students if student.id not in testing_set]
     return render_template('choose_testers.html', student_list=students)
 
+
 @app.route("/confirm_first_update", methods=['GET','POST'], endpoint='confirm_first_update')
 @login_required
 @admin_only
 def confirm_first_update():
     return render_template('confirm_first_update.html')
+
+
+@app.route("/edit_instructor/<userid>", methods=['GET', 'POST'], endpoint='edit_instructor')
+@login_required
+@admin_only
+def edit_instructor(userid):   
+    instructor = User.query.filter_by(id=userid).first()
+    form = AddUserForm()
+    form.school_id.choices = [(school.id, school.location) for school in School.query.order_by(School.location).all()]
+    if request.method == 'POST':
+        if form.validate_on_submit:
+            first_name = form.first_name.data
+            last_name = form.last_name.data
+            temp_password = form.temp_password.data
+            email = form.email.data
+            school_id = form.school_id.data
+            role = form.role.data
+            if email != instructor.email:
+                duplicate = User.query.filter_by(email=email).first()
+                if duplicate:
+                    flash("Email (Username) is already taken")
+                    form.first_name.data = first_name
+                    form.last_name.data = last_name
+                    form.school_id.data = school_id
+                    form.role.data = role
+                    flash("EMAIL already in use.")
+                    return render_template('edit_instructor.html', form=form, userid=userid)
+            instructor.first_name = first_name
+            instructor.last_name = last_name
+            instructor.email = email
+            instructor.school_id = school_id
+            instructor.role = role
+            if temp_password != '':
+                instructor.set_password(temp_password)
+            
+            db.session.commit()
+            
+            flash("Instructor has been edited.")
+            return redirect(url_for('options'))
+    
+    form.first_name.data = instructor.first_name
+    form.last_name.data = instructor.last_name
+    form.email.data = instructor.email
+    form.role.data = instructor.role
+    form.school_id.data = instructor.school_id
+    
+    return render_template('edit_instructor.html', form=form)
+
+
+@app.route("/edit_student/<studentid>", methods=['GET', 'POST'])
+@login_required
+def edit_student(studentid):   
+    student = Student.query.filter_by(id=studentid).first()
+    form = AddStudentForm()
+    form.school_id.choices = [(school.id, school.location) for school in School.query.order_by(School.location).all()]
+    if request.method == 'POST':
+        if form.validate_on_submit:
+            student.first_name = form.first_name.data
+            student.last_name = form.last_name.data
+            student.DOB = form.DOB.data
+            rank = form.rank.data
+            if rank == 'triple stripe':
+                student.rank = 0
+            else:
+                student.rank = int(rank)
+            student.recerts = int(form.recerts.data)
+            student.school_id = form.school_id.data
+            student.current = form.current.data
+            
+            db.session.commit()
+            
+            flash("Student has been edited.")
+            return redirect(url_for('options'))
+    
+    form.first_name.data = student.first_name
+    form.last_name.data = student.last_name
+    form.DOB.data = student.DOB
+    if student.rank == 0:
+        form.rank.data = "triple stripe"
+    else:
+        form.rank.data = str(student.rank)
+    form.recerts.data = student.recerts
+    form.school_id.data = student.school_id
+    form.current.data = student.current
+    return render_template('edit_student.html', form=form)
+    
+
 
 @app.route("/edit_test", methods=['GET', 'POST'], endpoint='edit_test')
 @login_required

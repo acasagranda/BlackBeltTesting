@@ -69,9 +69,12 @@ class Test(db.Model):
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(120), unique=True)
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100), index=True)
+    email = db.Column(db.String(120), unique=True)
     password_hash = db.Column(db.String(228))
     role = db.Column(db.String(10), default='instructor')
+    school_id = db.Column(db.Integer, nullable=False)
     extra = db.Column(db.String(100))
 
     def set_password(self, password):
@@ -83,7 +86,7 @@ class User(UserMixin, db.Model):
 
 def makeme():
     p = generate_password_hash('and')
-    me = User(password_hash=p, role='admin', username='andrea')
+    me = User(password_hash=p, role='admin', email='andrea',school_id=1)
     db.session.add(me)
     db.session.commit()
 

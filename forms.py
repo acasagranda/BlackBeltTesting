@@ -18,15 +18,25 @@ class AddStudentForm(FlaskForm):
     DOB  = DateField('Date of Birth: ', validators=[DataRequired()])
     school_id = SelectField('School: ', coerce=int)
     which_test = SelectField('Which test? ', choices=['regular test','makeup test','not testing'])
-    submit = SubmitField('Add this student.')
+    current = BooleanField('Currently a Student (uncheck to put in Archives): ')
+    submit = SubmitField('Save this student.')
 
 class AddTestForm(FlaskForm):
     testing_date  = DateField('Date: ', format='%Y-%m-%d')
     testing_number = IntegerField('Testing Number: ')
     submit = SubmitField('Save this Test')
 
+class AddUserForm(FlaskForm):
+    first_name = StringField('First Name: ')
+    last_name = StringField('Last Name: ')
+    email = StringField('Email (username): ')
+    temp_password = StringField("Temporary Password: ")
+    school_id = SelectField('School: ', coerce=int)
+    role = SelectField('role', choices = ['instructor', 'admin'])
+    submit = SubmitField('Save this user.')
+
 class LoginForm(FlaskForm):
-    username = StringField('Username:  ', validators=[DataRequired()])
+    email = StringField('Email (Username):  ', validators=[DataRequired()])
     password = PasswordField('Password:  ')
     remember = BooleanField('Remember Me')
     submit = SubmitField('Sign in')

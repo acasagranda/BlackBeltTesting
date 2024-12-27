@@ -1,13 +1,13 @@
 {% extends "layout2.html" %}
 
 {% block title %}
-    Add Student
+    Edit User
 {% endblock %}
 
 {% block main %}
     <br><br>
     <div class="center">
-        <h1>Add Student:</h1>
+        <h1>Edit User:</h1>
         <div class="bigger">
             <form action="" method="post">
                 {{ form.hidden_tag() }}
@@ -24,20 +24,14 @@
                     {% endfor %}
                 </p>
                 <p>
-                    {{ form.DOB.label }}  {{ form.DOB(size=20) }}
-                    {% for error in form.DOB.errors %}
+                    {{ form.email.label }}  {{ form.email(size=30) }}
+                    {% for error in form.email.errors %}
                         <span style="color: red;">[{{ error }}]</span>
                     {% endfor %}
                 </p>
                 <p>
-                    {{ form.rank.label }}  {{ form.rank }}<br>
-                    {% for error in form.rank.errors %}
-                        <span style="color: red;">[{{ error }}]</span>
-                    {% endfor %}
-                </p>
-                <p>
-                    {{ form.recerts.label }}  {{ form.recerts(size=10) }}
-                    {% for error in form.recerts.errors %}
+                    {{ form.role.label }}  {{ form.role }}<br>
+                    {% for error in form.role.errors %}
                         <span style="color: red;">[{{ error }}]</span>
                     {% endfor %}
                 </p>
@@ -45,7 +39,7 @@
                     {{ form.school_id.label }}  {{ form.school_id}}
                 </p>
                 <p>
-                    {{ form.which_test.label }}  {{ form.which_test }}
+                    {{ form.temp_password.label }}  {{ form.temp_password }}
                 </p>
                 <p> {{ form.submit() }}</p>
             </form>

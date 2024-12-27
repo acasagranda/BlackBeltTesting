@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Choose Instructor
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose Instructor to Edit:</h1>
+        <form method="POST" action="">
+            <select name="userid" id="student-select" style="width: 25%">
+                <option value="">--Choose an Instructor:--</option>
+                {% for instructor in instructor_list %}
+                    <option value="({{ instructor.id }})">{{ instructor.last_name }}, {{ instructor.first_name }} </option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="Edit this Instructor.">
+        </form>
+        <br><br>
+    </div>
+{% endblock %}
