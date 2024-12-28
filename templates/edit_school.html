@@ -1,0 +1,27 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Edit School
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Edit School:</h1>
+        <div class="bigger">
+            <form action="" method="post">
+                {{ form.hidden_tag() }}
+                <p>
+                    {{ form.location.label }}  {{ form.location(size=30) }}
+                    {% for error in form.location.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
+                </p>
+                <p> 
+                    {{ form.submit() }}
+                </p>
+            </form>
+            <br><br>
+        </div>
+    </div>
+{% endblock %}

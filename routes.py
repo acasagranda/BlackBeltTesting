@@ -132,25 +132,7 @@ def add_test():
     form.testing_number.data = test.testing_number + 1
     return render_template('add_test.html', form=form)
 
-# @app.route('/add_to_makeup', methods=['POST'])
-# @login_required
-# def add_to_makeup():
-#     studentid = request.form['studentid']
-#     studentid = studentid.strip(')').strip('(')
-#     if studentid:
-#         studentid = int(studentid)
-#         student = Student.query.filter_by(id=studentid).first()
-#         if student:
-#             test = Test.query.order_by(Test.id.desc()).first()
-#             if test.testing_date - student.DOB >= timedelta(days=365*18):
-#                 level = 'Adult'
-#             else:
-#                 level = 'Junior'
-#             student_test = StudentTest(student_id=student.id,test_id=test.id,makeup_test=True,level=level)
-#             db.session.add(student_test)
-#             db.session.commit()
 
-#     return redirect(url_for('choose_testers'))
 
 
 #  A student that went to regular testing but has not passed yet is put in limbo
@@ -255,6 +237,18 @@ def choose_instructor():
     return render_template('choose_instructor.html', instructor_list=instructors)
 
 
+@app.route("/choose_school", methods=['GET','POST'], endpoint='choose_school')
+@login_required
+@admin_only
+def choose_school():
+    schools = School.query.order_by(School.location).all()
+    if request.method == "POST":
+        schoolid = request.form['schoolid']
+        schoolid=schoolid.strip(')').strip('(')
+        return redirect(url_for('edit_school', schoolid=schoolid))
+    
+    return render_template('choose_school.html', school_list=schools)
+
 @app.route("/choose_student", methods=['GET','POST'])
 @login_required
 def choose_student():
@@ -311,7 +305,6 @@ def edit_instructor(userid):
                     form.last_name.data = last_name
                     form.school_id.data = school_id
                     form.role.data = role
-                    flash("EMAIL already in use.")
                     return render_template('edit_instructor.html', form=form, userid=userid)
             instructor.first_name = first_name
             instructor.last_name = last_name
@@ -333,6 +326,31 @@ def edit_instructor(userid):
     form.school_id.data = instructor.school_id
     
     return render_template('edit_instructor.html', form=form)
+
+@app.route("/edit_school/<schoolid>", methods=['GET', 'POST'], endpoint='edit_school')
+@login_required
+@admin_only
+def edit_school(schoolid):   
+    school = School.query.filter_by(id=schoolid).first()
+    form = AddSchoolForm()
+    if request.method == 'POST':
+        if form.validate_on_submit:
+            location = form.location.data
+            if location != school.location:
+                duplicate = School.query.filter_by(location=location).first()
+                if duplicate:
+                    flash("School name is already taken")
+                    form.location.data = location
+                    return render_template('edit_school.html', form=form, schoolid=schoolid)
+            school.location = location            
+            db.session.commit()
+            
+            flash("School has been edited.")
+            return redirect(url_for('options'))
+    
+    form.location.data = school.location
+    
+    return render_template('edit_school.html', form=form)
 
 
 @app.route("/edit_student/<studentid>", methods=['GET', 'POST'])

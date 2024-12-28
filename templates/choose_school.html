@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Choose School
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose School to Edit:</h1>
+        <form method="POST" action="">
+            <select name="schoolid"  style="width: 25%">
+                <option value="">--Choose a School:--</option>
+                {% for school in school_list %}
+                    <option value="({{ school.id }})">{{ school.location }}</option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="Edit this School.">
+        </form>
+        <br><br>
+    </div>
+{% endblock %}

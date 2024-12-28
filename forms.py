@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 class AddSchoolForm(FlaskForm):
     location = StringField('School location: ')
-    submit = SubmitField('Add this school')
+    submit = SubmitField('Save this school')
 
 class AddStudentForm(FlaskForm):
     first_name = StringField('First Name: ')

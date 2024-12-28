@@ -55,7 +55,7 @@ class StudentTest(db.Model):
     makeup_test = db.Column(db.Boolean, default=False)    #regular is False, makeup is true
     passed_regular = db.Column(db.Boolean, default=False)
     passed_makeup = db.Column(db.Boolean, default=False)
-    limbo = db.Column(db.Boolean, default=False)  # just make limbo
+    limbo = db.Column(db.Boolean, default=False)  # was at first test but hasn't passed yet
 
     
 
