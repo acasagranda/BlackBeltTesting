@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Remove Student from Pass List
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose Student to Remove from the Pass List:</h1>
+        <form method="POST" action="">
+            <select name="studentid" id="student-select" style="width: 25%">
+                <option value="">--Choose a student:--</option>
+                {% for student in student_list %}
+                    <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="Remove this Student.">
+        </form>
+        <br><br>
+    </div>
+{% endblock %}

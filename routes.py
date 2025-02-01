@@ -8,7 +8,7 @@ from app import app, db, Certificate, School, Student, StudentTest, Test, User, 
 from datetime import datetime, timezone, timedelta
 from flask import request, render_template, flash, redirect, url_for, session
 from flask_login import current_user, login_user, logout_user, login_required
-from forms import AddSchoolForm, AddStudentForm, AddTestForm, AddUserForm, LoginForm  #, EmailForm2, PasswordForm2, AddstudentForm2, RegistrationForm2
+from forms import AddSchoolForm, AddStudentForm, AddTestForm, AddUserForm, LoginForm, StudentTestForm  #, EmailForm2, PasswordForm2, AddstudentForm2, RegistrationForm2
 # from secrets import choice
 
 
@@ -38,9 +38,10 @@ def login():
                 login_user(user, remember=form.remember.data)
                 test = Test.query.order_by(Test.id.desc()).first()
                 # filename = r"/home/TerryM/dealer.picassolures.com/PassLists/passlist"+str(test.testing_number)+".csv"
-                session["pass_filename"] = 'PassLists/passlist' + str(test.testing_number) + ".csv"
-                session["certif_filename"] = 'CertificateLists/certificatelist' + str(test.testing_number) + ".csv"
-                session["makeup_filename"] = 'MakeupPassLists/makeuppasslist' + str(test.testing_number) + ".csv"
+                if test:
+                    session["pass_filename"] = 'PassLists/passlist' + str(test.testing_number) + ".csv"
+                    session["certif_filename"] = 'CertificateLists/certificatelist' + str(test.testing_number) + ".csv"
+                    session["makeup_filename"] = 'MakeupPassLists/makeuppasslist' + str(test.testing_number) + ".csv"
                 return redirect(url_for('options'))
         flash("Username or password is incorrect. Please try again.")
         return redirect(url_for('login'))
@@ -96,6 +97,7 @@ def add_student():
                     level = 'Junior'
                 if rank == 3 and recerts == 6:
                     testing_up = True
+                    new_student.extra = '6'
                 else:
                     testing_up = False
                 if which_test == "regular test":
@@ -173,6 +175,7 @@ def add_to_test(testid):
                 makeup_test = True
             if student.rank == 3 and student.recerts == 6:
                 testing_up = True
+                student.extra = '6'
             else:
                 testing_up = False
             student_test = StudentTest(student_id=student.id,test_id=test.id,makeup_test=makeup_test,level=level,testing_up=testing_up)
@@ -223,6 +226,21 @@ def choose_high_ranks():
     high_ranks.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('choose_high_ranks.html', high_ranks=high_ranks)
 
+@app.route("/choose_testing_up", methods=['GET','POST'])
+@login_required
+def choose_testing_up():
+    test = Test.query.order_by(Test.id.desc()).first()
+    testing_up = []
+    
+    for studenttest in test.students:
+        student = Student.query.filter_by(id=studenttest.student_id).first()
+        if studenttest.testing_up:
+            if current_user.role == "admin" or current_user.school_id == student.school_id:
+                testing_up.append(student)
+            
+    testing_up.sort(key = lambda x: (x.last_name, x.first_name))
+    return render_template('choose_testing_up.html', testing_up=testing_up)
+
 
 @app.route("/choose_instructor", methods=['GET','POST'], endpoint='choose_instructor')
 @login_required
@@ -263,7 +281,19 @@ def choose_student():
     
     return render_template('choose_student.html', student_list=students)
 
-
+@app.route("/choose_student_test", methods=['GET','POST'],endpoint="choose_student_test")
+@login_required
+@admin_only
+def choose_student():
+    test = Test.query.order_by(Test.id.desc()).first()
+    student_list = [Student.query.filter_by(id=student_test.student_id).first() for student_test in test.students]
+    student_list.sort(key=lambda x: [x.last_name, x.first_name])
+    if request.method == "POST":
+        studentid = request.form['studentid']
+        studentid=studentid.strip(')').strip('(')
+        return redirect(url_for('edit_student_test', studentid=studentid))
+    
+    return render_template('choose_student_test.html', student_list=student_list)
 
 @app.route("/choose_testers", methods=['GET','POST'])
 @login_required
@@ -390,7 +420,80 @@ def edit_student(studentid):
     form.current.data = student.current
     return render_template('edit_student.html', form=form)
     
-
+@app.route("/edit_student_test/<studentid>", methods=['GET', 'POST'],endpoint="edit_student_test")
+@login_required
+@admin_only
+def edit_student_test(studentid):
+    student = Student.query.filter_by(id=studentid).first()
+    test = Test.query.order_by(Test.id.desc()).first()
+    student_test = StudentTest.query.filter_by(student_id=student.id).filter_by(test_id=test.id).first()
+    studentname = student.first_name + " " + student.last_name
+    form = StudentTestForm()
+    
+    if request.method == 'POST':
+        if form.validate_on_submit:
+            rank = form.rank.data
+            if rank == 'triple stripe':
+                rank = 0
+            else:
+                rank = int(rank)
+            recerts = form.recerts.data
+            recerts = int(recerts)
+            level = form.level.data
+            if student.rank == rank and student.recerts == recerts and student_test.level == level:
+                flash("No changes were made.")
+                return redirect(url_for("choose_student_test"))
+            school = School.query.filter_by(id=student.school_id).first()
+            school = school.location
+            if student_test.passed_regular or student_test.passed_makeup:
+                if student_test.passed_regular:
+                    filename = session["pass_filename"]
+                else:
+                    filename = session["makeup_filename"]
+                if student.recerts == 0:                   
+                    with open(session["certif_filename"]) as csv_file:
+                        certif_list = [row for row in csv.reader(csv_file, delimiter=',')]
+                    for idx, row in enumerate(certif_list):
+                        if row[5] == student.last_name and row[4] == student.first_name and row[1] == str(student.rank) and row[2] == student_test.level and row[3] == school:
+                            certif_list.pop(idx)
+                            break
+                    with open(session["certif_filename"], 'w', newline='') as csvfile:
+                        spamwriter = csv.writer(csvfile, delimiter=',')
+                        for row in certif_list:
+                            spamwriter.writerow(row)
+                if recerts == 0:
+                    with open(session["certif_filename"], 'a', newline='') as csvfile:
+                        spamwriter = csv.writer(csvfile, delimiter=',')
+                        spamwriter.writerow([studentname, rank, level, school, student.first_name, student.last_name])
+                with open(filename) as csv_file:
+                        pass_list = [row for row in csv.reader(csv_file, delimiter=',')]
+                for idx, row in enumerate(pass_list):
+                    if row[5] == student.last_name and row[4] == student.first_name and row[1] == str(student.rank) and row[2] == str(student.recerts) and row[3] == student_test.level:
+                        pass_list.pop(idx)
+                        break
+                with open(filename, 'w', newline='') as csvfile:
+                    spamwriter = csv.writer(csvfile, delimiter=',')
+                    for row in pass_list:
+                        spamwriter.writerow(row)
+                    spamwriter.writerow([studentname, rank, recerts, level, student.first_name, student.last_name])
+            student.rank = rank
+            student.recerts = recerts
+            student_test.level = level
+            
+            
+            db.session.commit()
+            
+            flash("Student has been edited.")
+            return redirect(url_for('options'))
+    
+    if student.rank == 0:
+        form.rank.data = "triple stripe"
+    else:
+        form.rank.data = str(student.rank)
+    form.recerts.data = student.recerts
+    form.level.data = student_test.level
+    return render_template('edit_student_test.html', form=form, studentname=studentname)
+    
 
 @app.route("/edit_test", methods=['GET', 'POST'], endpoint='edit_test')
 @login_required
@@ -522,9 +625,10 @@ def options():
 def pass_indiv():
     studentids = request.form.getlist('studentid')
     passes = request.form.getlist('status')
-    students = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="pass"]
+    students_pass = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="pass"]
+    students_makeup = [studentids[idx] for idx in range(len(studentids)) if passes[idx] == "makeup"]
     test = Test.query.order_by(Test.id.desc()).first()
-    for studentid in students:
+    for studentid in students_pass:
         student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
         student_test.passed_regular = True
         student_test.limbo = False
@@ -536,8 +640,11 @@ def pass_indiv():
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
             school = School.query.filter_by(id=student.school_id).first()
             write_to_file(session["certif_filename"],[full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
+    for studentid in students_makeup:
+        student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
+        student_test.makeup_test = True
     db.session.commit()
-    flash("Passing Individual students have been updated.")
+    flash("Individual students have been updated.")
     return redirect(url_for('options'))
 
 
@@ -548,6 +655,7 @@ def pass_makeups():
     studentids = request.form.getlist('studentid')
     passes = request.form.getlist('status')
     students = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="pass"]
+    move_students = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="move"]
     test = Test.query.order_by(Test.id.desc()).first()
     for studentid in students:
         student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
@@ -560,6 +668,12 @@ def pass_makeups():
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
             school = School.query.filter_by(id=student.school_id).first()
             write_to_file(session["certif_filename"],[full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
+    for studentid in move_students:
+        student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
+        student_test.makeup_test = False
+        student_test.passed_makeup = False
+        student_test.passed_regular = False
+        student_test.limbo = False        
     db.session.commit()
     flash("Passing Makeup students have been updated.")
     return redirect(url_for('options'))
@@ -569,22 +683,132 @@ def pass_makeups():
 @login_required
 def pattern_count():
     test = Test.query.order_by(Test.id.desc()).first()
-    juniors = [Student.query.filter_by(id=student.student_id).first() for student in test.students if student.level=="Junior"]
-    adults = [Student.query.filter_by(id=student.student_id).first() for student in test.students if student.level=="Adult"]
-    junior_patterns = [0,[],[],[]]
-    adult_patterns = [0,[],[],[]]
+    juniors = [Student.query.filter_by(id=student.student_id).first() for student in test.students if (student.level=="Junior" and not student.makeup_test)]
+    adults = [Student.query.filter_by(id=student.student_id).first() for student in test.students if (student.level=="Adult" and not student.makeup_test)]
+    junior_patterns = [0]
+    adult_patterns = [0]
     ranks = [0,"1ST","2ND","3RD"]
     for rank in range(1,4):
-        for recert in range(0,3):
-            junior = [student for student in juniors if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]
-            if junior:
-                patterns = len(junior)
-            else:
-                patterns = 0
-            junior_patterns[rank].append(patterns)
-            adult_patterns[rank].append(len([student for student in adults if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]))
+        juniorrank = [student for student in juniors if (student.rank == rank and student.recerts < 6)]
+        one = len([student for student in juniorrank if student.recerts == 0])
+        two = len([student for student in juniorrank if student.recerts == 1])
+        three = len(juniorrank) - one - two
+        junior_patterns.append([one, two, three])
+        adultrank = [student for student in adults if (student.rank == rank and student.recerts < 6)]
+        one = len([student for student in adultrank if student.recerts == 0])
+        two = len([student for student in adultrank if student.recerts == 1])
+        three = len(adultrank) - one - two
+        adult_patterns.append([one, two, three])
+        
+        # for recert in range(0,3):
+        #     junior = [student for student in juniors if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]
+        #     if junior:
+        #         patterns = len(junior)
+        #     else:
+        #         patterns = 0
+        #     junior_patterns[rank].append(patterns)
+        #     adult_patterns[rank].append(len([student for student in adults if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]))
     return render_template('pattern_count.html', adult_patterns=adult_patterns, junior_patterns=junior_patterns, ranks=ranks)
+
+@app.route('/view_test')
+@login_required
+def view_test():
+    test = Test.query.order_by(Test.id.desc()).first()
+    juniors = [Student.query.filter_by(id=student.student_id).first() for student in test.students if (student.level=="Junior" and not student.makeup_test)]
+    adults = [Student.query.filter_by(id=student.student_id).first() for student in test.students if (student.level=="Adult" and not student.makeup_test)]
+    juniortesters = {}
+    adulttesters = {}
+    for rank in range(9):
+        junior = [student for student in juniors if student.rank == rank]
+        adult = [student for student in adults if student.rank == rank]
+        if rank < 4:
+            junior.sort(key = lambda x: [x.recerts, x.last_name, x.first_name])
+            adult.sort(key = lambda x: [x.recerts, x.last_name, x.first_name])
+        else:
+            junior.sort(key = lambda x: [x.last_name, x.first_name])
+            adult.sort(key = lambda x: [x.last_name, x.first_name])
+        juniortesters[rank] = junior
+        adulttesters[rank] = adult
+ 
+    return render_template('view_test.html', juniortesters=juniortesters, adulttesters=adulttesters)
+
+
+@app.route("/remove_makeup", methods=['GET','POST'], endpoint='remove_makeup')
+@login_required
+@admin_only
+def remove_makeup():
+    test = Test.query.order_by(Test.id.desc()).first()
+    studenttests = [studenttest for studenttest in test.students if studenttest.passed_makeup]
+    students = [Student.query.filter_by(id=studenttest.student_id).first() for studenttest in studenttests]
+    students.sort(key=lambda x: [x.last_name,x.first_name])
     
+    if request.method == "POST":
+        studentid = request.form['studentid']
+        studentid=studentid.strip(')').strip('(')
+        return redirect(url_for('remove_student', testtype='makeup', studentid=studentid))
+    
+    return render_template('remove_pass.html', student_list=students)
+
+
+@app.route("/remove_pass", methods=['GET','POST'], endpoint='remove_pass')
+@login_required
+@admin_only
+def remove_pass():
+    test = Test.query.order_by(Test.id.desc()).first()
+    studenttests = [studenttest for studenttest in test.students if studenttest.passed_regular]
+    students = [Student.query.filter_by(id=studenttest.student_id).first() for studenttest in studenttests]
+    students.sort(key=lambda x: [x.last_name,x.first_name])
+    
+    if request.method == "POST":
+        studentid = request.form['studentid']
+        studentid=studentid.strip(')').strip('(')
+        return redirect(url_for('remove_student', testtype='pass', studentid=studentid))
+    
+    return render_template('remove_pass.html', student_list=students)
+
+@app.route("/remove_student/<testtype>/<studentid>", methods=['GET','POST'], endpoint='remove_student')
+@login_required
+@admin_only
+def remove_student(testtype, studentid):
+    student = Student.query.filter_by(id=studentid).first()
+    school = School.query.filter_by(id=student.school_id).first()
+    test = Test.query.order_by(Test.id.desc()).first()
+    studenttest = StudentTest.query.filter_by(student_id=student.id).filter_by(test_id=test.id).first()
+    filename = testtype + "_filename"
+    with open(session[filename]) as csv_file:
+        csv_reader = [row for row in csv.reader(csv_file, delimiter=',')]
+    for idx, row in enumerate(csv_reader):
+        if row[5] == student.last_name and row[4] == student.first_name and row[1] == str(student.rank) and row[2] == str(student.recerts) and row[3] == studenttest.level:
+            csv_reader.pop(idx)
+            break
+    with open(session[filename], 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=',')
+        for row in csv_reader:
+            spamwriter.writerow(row)
+    if student.recerts == 0:
+        with open(session["certif_filename"]) as csv_file:
+            csv_reader = [row for row in csv.reader(csv_file, delimiter=',')]
+        for idx, row in enumerate(csv_reader):
+            if row[5] == student.last_name and row[4] == student.first_name and row[1] == str(student.rank) and row[2] == studenttest.level and row[3] == school.location:
+                csv_reader.pop(idx)
+                break
+        with open(session["certif_filename"], 'w', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',')
+            for row in csv_reader:
+                spamwriter.writerow(row)
+        studentcertif = Certificate.query.filter_by(studenttest_id=studenttest.id).filter_by(test_id=test.id).first()
+        db.session.delete(studentcertif)
+        
+    student.rank, student.recerts = undo_update_rank(studenttest, student)
+    if testtype == "pass":
+        studenttest.passed_regular = False
+        studenttest.limbo = True
+    else:
+        studenttest.passed_makeup = False
+    db.session.commit()
+    flash("Student has been removed from pass list.")
+    return redirect(url_for('options'))
+
 
 @app.route('/test_count/<testid>')
 @login_required
@@ -667,9 +891,33 @@ def test_up():
         if student:
             test = Test.query.order_by(Test.id.desc()).first()
             student_testing = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
-            student_testing.testing_up = True           
+            student_testing.testing_up = True
+            student.extra = str(student.recerts)        
             db.session.commit()
     return redirect(url_for('choose_high_ranks'))
+
+@app.route('/remove_test_up', methods=['POST'])
+@login_required
+def remove_test_up():
+    studentid = request.form['studentid']
+    studentid = studentid.strip(')').strip('(')
+    if studentid:
+        studentid = int(studentid)
+        student = Student.query.filter_by(id=studentid).first()
+        if student:
+            test = Test.query.order_by(Test.id.desc()).first()
+            student_testing = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
+            student_testing.testing_up = False     
+            db.session.commit()
+    return redirect(url_for('choose_testing_up'))
+
+def undo_update_rank(student_test, student):
+    if student_test.testing_up:
+        return student.rank - 1, int(student.extra)
+    if student.recerts > 0:
+        return student.rank, student.recerts - 1
+    return student.rank - 1, student.rank * 2
+    
 
 def update_rank(student_test, student):
     if student.rank >= 4:

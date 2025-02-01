@@ -1,0 +1,21 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Options
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        {% for rank in range(9) %}
+            <h2>Junior {{rank}} </h2>
+            {% for student in juniortesters[rank] %}
+                <p>{{student.first_name}} {{student.last_name}} {{student.recerts}}</p>
+            {% endfor %}
+            <h2>Adult {{rank}} </h2>
+            {% for student in adulttesters[rank] %}
+                <p>{{student.first_name}} {{student.last_name}} {{student.recerts}}</p>
+            {% endfor %}
+        {% endfor %}
+    </div>
+{% endblock %}

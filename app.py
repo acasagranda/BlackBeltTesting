@@ -43,7 +43,7 @@ class Student(db.Model):
     rank = db.Column(db.Integer)
     recerts = db.Column(db.Integer)
     current = db.Column(db.Boolean, default=True)
-    extra = db.Column(db.String(100))
+    extra = db.Column(db.String(100))     # change to store recerts in case testing_up changes
 
 
 class StudentTest(db.Model):

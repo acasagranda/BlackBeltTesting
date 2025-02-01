@@ -1,0 +1,36 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Edit Student_Test
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Edit {{studentname}}:</h1>
+        <div class="bigger">
+            <form action="" method="post">
+                {{ form.hidden_tag() }}
+                
+                <p>
+                    {{ form.rank.label }}  {{ form.rank }}<br>
+                    {% for error in form.rank.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
+                </p>
+                <p>
+                    {{ form.recerts.label }}  {{ form.recerts(size=10) }}
+                    {% for error in form.recerts.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
+                </p>
+                <p>
+                    {{ form.level.label }}  {{ form.level}}
+                </p>
+                
+                <p> {{ form.submit() }}</p>
+            </form>
+            <br><br>
+        </div>
+    </div>
+{% endblock %}

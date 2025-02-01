@@ -21,6 +21,15 @@ class AddStudentForm(FlaskForm):
     current = BooleanField('Currently a Student (uncheck to put in Archives): ')
     submit = SubmitField('Save this student.')
 
+class StudentTestForm(FlaskForm):
+    rank = SelectField('Current Rank: ', choices=[
+                       'triple stripe', '1', '2', '3', '4', '5', '6', '7', '8'], validators=[DataRequired()])
+    recerts = IntegerField('Number of completed Recertifications: ', default=0)
+    level = SelectField('Level: ', choices = ["Adult","Junior"])
+    submit = SubmitField('Edit this student.')
+    
+
+
 class AddTestForm(FlaskForm):
     testing_date  = DateField('Date: ', format='%Y-%m-%d')
     testing_number = IntegerField('Testing Number: ')

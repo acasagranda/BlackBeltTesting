@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Choose High Rank Testing Up
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose Student to remove Testing Up</h1>
+        <form method="POST" action="/remove_test_up">
+            <select name="studentid" id="student-select" >
+                <option value="">--Choose a student:--</option>
+                {% for student in testing_up %}
+                    <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="This student is no longer Testing Up"> 
+        </form>
+        <br><br>
+    </div>
+{% endblock %}
