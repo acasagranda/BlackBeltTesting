@@ -8,16 +8,22 @@ Choose Makeup Test Passers
     <br><br>
     <div class="center">
         <h1>Mark Students who DID Pass Makeup Test or Move to Regular Test</h1>
+        
         <form method="POST" action="/pass_makeups">
             <input type="submit" value="Update Students" style="background-color:#D7232F; padding: 1%;">
-            <br><br>
-            <h2> Student &emsp; &emsp; &emsp; Passed?</h2>
-            <div class="bigger">
-                {% for student in student_list %}
-                    <input type="hidden" name="studentid" value={{student.id}}>
-                    {{student.last_name}}, {{student.first_name}} &emsp; <select name="status" id="level-select"> <option selected="selected" value="nopass">NOT passed</option><option value="pass">PASSED</option><option value="move">Move to Regular Test</option></select>
-                    <br><br>
-                {% endfor %}
+            <div>
+                <br><br>
+                <table>
+                    {% for idx in range(student_list|length) %}
+                        <input type="hidden" name="studentid" value={{student_list[idx].id}}>
+                        <tr>
+                            <td class="namecell">{{student_list[idx].last_name}}, {{student_list[idx].first_name}} </td>
+                            <td> <input type="radio" name="status{{idx}}" value="nopass" checked /><label>Not passed</label>&nbsp;
+                            <input type="radio" name="status{{idx}}" value="pass" /><label>PASSED</label>&nbsp;
+                            <input type="radio" name="status{{idx}}" value="move"  /><label>Move to regular test.</label></td>
+                        </tr>
+                    {% endfor %}
+                </table>
             </div>
         </form>
     </div>

@@ -271,7 +271,7 @@ def choose_school():
 @login_required
 def choose_student():
     if current_user.role == 'admin':
-        students = Student.query.order_by(Student.last_name, Student.first_name).all()   #  filter_by(current=True)
+        students = Student.query.filter_by(current=True).order_by(Student.last_name, Student.first_name).all()   #  filter_by(current=True)
     else:
         students = Student.query.filter_by(school_id=current_user.school_id).filter_by(current=True).order_by(Student.last_name, Student.first_name).all()
     if request.method == "POST":
@@ -454,7 +454,7 @@ def edit_student_test(studentid):
                     with open(session["certif_filename"]) as csv_file:
                         certif_list = [row for row in csv.reader(csv_file, delimiter=',')]
                     for idx, row in enumerate(certif_list):
-                        if row[5] == student.last_name and row[4] == student.first_name and row[1] == str(student.rank) and row[2] == student_test.level and row[3] == school:
+                        if row[5] == student.last_name and row[4] == student.first_name and row[3] == str(student.rank) and row[2] == student_test.level and row[1] == school:
                             certif_list.pop(idx)
                             break
                     with open(session["certif_filename"], 'w', newline='') as csvfile:
@@ -464,7 +464,7 @@ def edit_student_test(studentid):
                 if recerts == 0:
                     with open(session["certif_filename"], 'a', newline='') as csvfile:
                         spamwriter = csv.writer(csvfile, delimiter=',')
-                        spamwriter.writerow([studentname, rank, level, school, student.first_name, student.last_name])
+                        spamwriter.writerow([studentname, school, level, rank, student.first_name, student.last_name])
                 with open(filename) as csv_file:
                         pass_list = [row for row in csv.reader(csv_file, delimiter=',')]
                 for idx, row in enumerate(pass_list):
@@ -564,7 +564,7 @@ def first_update_rank():
         if student.recerts == 0:
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
             school = School.query.filter_by(id=student.school_id).first()
-            write_to_file(session["certif_filename"],[full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
+            write_to_file(session["certif_filename"],[full_name,school.location, student_test.level,student.rank , student.first_name, student.last_name])
     db.session.commit()
     flash("Ranks have been updated.")
     return redirect(url_for('options'))
@@ -590,7 +590,7 @@ def logout():
 @admin_only
 def makeup_pass():
     test = Test.query.order_by(Test.id.desc()).first()
-    student_ids = [student.student_id for student in test.students if (student.makeup_test and not student.passed_makeup)]
+    student_ids = [student_test.student_id for student_test in test.students if (student_test.makeup_test and not student_test.passed_makeup)]
     students = [Student.query.filter_by(id=studentid).first() for studentid in student_ids]
     students.sort(key= lambda x: (x.last_name, x.first_name))
     return render_template('makeup_pass.html', student_list=students)
@@ -639,10 +639,13 @@ def pass_indiv():
         if student.recerts == 0:
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
             school = School.query.filter_by(id=student.school_id).first()
-            write_to_file(session["certif_filename"],[full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
+            write_to_file(session["certif_filename"],[full_name,school.location, student_test.level,student.rank , student.first_name, student.last_name])
+
     for studentid in students_makeup:
         student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
         student_test.makeup_test = True
+        student_test.limbo = False
+
     db.session.commit()
     flash("Individual students have been updated.")
     return redirect(url_for('options'))
@@ -653,7 +656,11 @@ def pass_indiv():
 @admin_only
 def pass_makeups():
     studentids = request.form.getlist('studentid')
-    passes = request.form.getlist('status')
+    # passes = request.form.getlist('status')
+    passes = []
+    for idx in range(len(studentids)):
+        tag = "status" + str(idx)
+        passes.append(request.form[tag])
     students = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="pass"]
     move_students = [studentids[idx] for idx in range(len(studentids)) if passes[idx]=="move"]
     test = Test.query.order_by(Test.id.desc()).first()
@@ -667,7 +674,7 @@ def pass_makeups():
         if student.recerts == 0:
             db.session.add(Certificate(test_id=test.id, studenttest_id=student_test.id, new_rank=student.rank))
             school = School.query.filter_by(id=student.school_id).first()
-            write_to_file(session["certif_filename"],[full_name,student.rank, student_test.level, school.location, student.first_name, student.last_name])
+            write_to_file(session["certif_filename"],[full_name, school.location, student_test.level, student.rank, student.first_name, student.last_name])
     for studentid in move_students:
         student_test = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
         student_test.makeup_test = False
@@ -678,6 +685,20 @@ def pass_makeups():
     flash("Passing Makeup students have been updated.")
     return redirect(url_for('options'))
 
+@app.route('/order_certif_list', methods=['POST','GET'], endpoint="order_certif_list")
+@login_required
+@admin_only
+def order_certif_list():
+    with open(session["certif_filename"]) as csv_file:
+        certifs = [row for row in csv.reader(csv_file, delimiter=',')]
+    certifs.sort(key= lambda x: [x[3],x[1],x[5],x[4]])
+    certifs.sort(key=lambda x: x[2], reverse=True)
+    with open(session["certif_filename"], 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=',')
+        for row in certifs:
+            spamwriter.writerow(row)
+    flash("Certificate file has been sorted.")
+    return redirect(url_for('options'))
 
 @app.route('/pattern_count')
 @login_required
@@ -789,7 +810,7 @@ def remove_student(testtype, studentid):
         with open(session["certif_filename"]) as csv_file:
             csv_reader = [row for row in csv.reader(csv_file, delimiter=',')]
         for idx, row in enumerate(csv_reader):
-            if row[5] == student.last_name and row[4] == student.first_name and row[1] == str(student.rank) and row[2] == studenttest.level and row[3] == school.location:
+            if row[5] == student.last_name and row[4] == student.first_name and row[3] == str(student.rank) and row[2] == studenttest.level and row[1] == school.location:
                 csv_reader.pop(idx)
                 break
         with open(session["certif_filename"], 'w', newline='') as csvfile:
@@ -803,8 +824,11 @@ def remove_student(testtype, studentid):
     if testtype == "pass":
         studenttest.passed_regular = False
         studenttest.limbo = True
+        studenttest.passed_makeup = False
     else:
         studenttest.passed_makeup = False
+        studenttest.passed_regular = False
+        studenttest.limbo = False
     db.session.commit()
     flash("Student has been removed from pass list.")
     return redirect(url_for('options'))
@@ -841,10 +865,11 @@ def test_count(testid):
         test_totals[test] += junior + adult
     rank = 3
     test = 3
-    adult = count(adults_test, rank)
-    junior = count(juniors_test, rank)
+    adult = count36(adults, rank)
+    junior = count36(juniors, rank)
     write_rank(filename, rank, junior, adult, True)
     test_totals[test] += junior + adult
+
     rank = 4
     adult = count(adults, rank)
     junior = count(juniors, rank)
@@ -867,7 +892,12 @@ def test_count(testid):
     
 
 def count(students, rank):
-    return len([student for student in students if student.rank == rank])
+    if rank != 3:
+        return len([student for student in students if student.rank == rank])
+    return len([student for student in students if (student.rank == rank and student.recerts != 6)])
+
+def count36(students, rank):
+    return len([student for student in students if (student.rank == rank and student.recerts == 6)])
 
 def write_rank(filename, rank, junior, adult, test):
     titles = ['TRIPLE STRIPES', '1ST DANS', '2ND DANS', '3RD DANS', '4TH DANS', '5TH DANS', '6TH DANS','7TH DANS','8TH DANS','9TH DANS']
@@ -916,7 +946,7 @@ def undo_update_rank(student_test, student):
         return student.rank - 1, int(student.extra)
     if student.recerts > 0:
         return student.rank, student.recerts - 1
-    return student.rank - 1, student.rank * 2
+    return student.rank - 1, (student.rank - 1) * 2
     
 
 def update_rank(student_test, student):
