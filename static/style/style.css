@@ -57,7 +57,10 @@ table td{
     display: grid;
     grid-template-columns: 1fr 1fr;
 }
-
+.three_columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+}
 /* columns */
 .two_columns > * {
     padding:1rem;

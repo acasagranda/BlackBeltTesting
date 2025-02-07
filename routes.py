@@ -226,6 +226,27 @@ def choose_high_ranks():
     high_ranks.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('choose_high_ranks.html', high_ranks=high_ranks)
 
+@app.route("/master_list", methods=['GET','POST'])
+@login_required
+def master_list():
+    test = Test.query.order_by(Test.id.desc()).first()
+    high_ranks = []
+    for studenttest in test.students:
+        student = Student.query.filter_by(id=studenttest.student_id).first()
+        if student.rank >=4 or (student.rank == 3 and student.recerts == 6):
+            high_ranks.append(student)
+    high_ranks.sort(key = lambda x: (x.last_name, x.first_name))
+    if len(high_ranks) <= 36:
+        rows = 1
+    else:
+        remaining = len(high_ranks) - 36
+        if remaining % 48:
+            rows = remaining // 48 + 2
+        else:
+            rows = remaining // 48 + 1
+    return render_template('master_list.html', high_ranks=high_ranks, rows=rows)
+
+
 @app.route("/choose_testing_up", methods=['GET','POST'])
 @login_required
 def choose_testing_up():
@@ -699,6 +720,55 @@ def order_certif_list():
             spamwriter.writerow(row)
     flash("Certificate file has been sorted.")
     return redirect(url_for('options'))
+
+def sortlist(templist):
+    templist = sorted(templist, key = lambda x: [x[5], x[4]])
+    return templist
+
+
+@app.route('/order_pass_list/<testtype>', methods=['POST','GET'], endpoint="order_pass_list")
+@login_required
+@admin_only
+def order_pass_list(testtype):
+    filename = testtype + "_filename"
+    with open(session[filename]) as csv_file:
+        teststudents = [row for row in csv.reader(csv_file, delimiter=',')]
+    teststudents.sort(key= lambda x: [x[1],x[2],x[5],x[4]])
+    teststudents.sort(key=lambda x: x[3], reverse=True)
+    sortedlist = []
+    templist = []
+    for row in teststudents:
+        if not templist:
+            templist.append(row)
+            continue
+        # detect a change in level or rank
+        if templist[-1][3] != row[3] or templist[-1][1] != row[1]:
+            templist = sortlist(templist)
+            sortedlist.extend(templist)
+            templist = [row]
+            continue
+        # detect when change from new rank to recerts
+        if (templist[-1][2] == '0' and row[2] != '0'):
+            templist = sortlist(templist)
+            sortedlist.extend(templist)
+            templist = [row]
+            continue
+        # detect change from  recerts to pretest
+        if int(row[1]) < 4 and int(templist[-1][2]) != 2 * int(templist[-1][1]) and int(row[2]) == 2 * int(row[1]):
+            templist = sortlist(templist)
+            sortedlist.extend(templist)
+            templist = [row]
+            continue
+        templist.append(row)
+    sortedlist.extend(templist)
+    with open(session[filename], 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=',')
+        for row in sortedlist:
+            spamwriter.writerow(row)
+    flash("Pass List file has been sorted.")
+    return redirect(url_for('options'))
+
+
 
 @app.route('/pattern_count')
 @login_required

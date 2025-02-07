@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Master List
+{% endblock %}
+
+{% block main %}
+    <div class="center">
+        <h1>Test 3 Check-in:</h1>
+        <br><br>
+        <div class="three_columns">
+            {% for idx in range(3) %}
+                <div class="center">
+                    {% for idx1 in range(12 * idx, [12 * (idx + 1), high_ranks|length]|min) %}
+                        <p>{{high_ranks[idx1]['first_name']}} {{high_ranks[idx1]['last_name']}} &nbsp; &nbsp; <input type="checkbox">  </p>
+                        <br>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        <br><br>
+        <br><br>
+        <br><br>
+        <br><br>
+        {% for page in range(rows-1) %}
+            <div class="three_columns">
+                {% for idx in range(3) %}
+                    <div class="center">
+                        {% for idx1 in range(36 + (page * 3 + idx)*16, [36 + (page * 3 + idx + 1)*16, high_ranks|length]|min) %}
+                            <p>{{high_ranks[idx1]['first_name']}} {{high_ranks[idx1]['last_name']}} &nbsp; &nbsp; <input type="checkbox">  </p>
+                            <br>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+            <br><br>
+            <br><br>
+            <br><br>
+            <br><br>
+        {% endfor %}
+    </div>
+<br><br>
+{% endblock %}
