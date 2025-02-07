@@ -28,7 +28,16 @@ class StudentTestForm(FlaskForm):
     level = SelectField('Level: ', choices = ["Adult","Junior"])
     submit = SubmitField('Edit this student.')
     
+class PasswordForm(FlaskForm):
+    oldpassword=PasswordField('Old Password',validators=[DataRequired()] )
+    password=PasswordField('New Password', validators=[DataRequired()])
+    password2=PasswordField('Repeat New Password', validators=[DataRequired(), EqualTo('password')])
+    submit=SubmitField('Change Password')
 
+
+class EmailForm(FlaskForm):
+    email=StringField('Email')
+    submit=SubmitField('Request username and temporary password.')
 
 class AddTestForm(FlaskForm):
     testing_date  = DateField('Date: ', format='%Y-%m-%d')

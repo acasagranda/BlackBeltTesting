@@ -1,16 +1,15 @@
 import csv
 import os
 # import smtplib
-# import string
+import string
 
 from app import app, db, Certificate, School, Student, StudentTest, Test, User, login_manager  # Archive
 # from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from flask import request, render_template, flash, redirect, url_for, session
-from flask_login import current_user, login_user, logout_user, login_required
-from forms import AddSchoolForm, AddStudentForm, AddTestForm, AddUserForm, LoginForm, StudentTestForm  #, EmailForm2, PasswordForm2, AddstudentForm2, RegistrationForm2
-# from secrets import choice
-
+from flask_login import current_user, login_user, logout_user, login_required, fresh_login_required
+from forms import AddSchoolForm, AddStudentForm, AddTestForm, AddUserForm, LoginForm, StudentTestForm, EmailForm, PasswordForm  #, AddstudentForm2, RegistrationForm2
+from secrets import choice
 
 
 @login_manager.user_loader
@@ -48,10 +47,7 @@ def login():
 
     return render_template('login.html', form=form)
 
-
-
-
-
+# Add a new school
 @app.route("/add_school", methods=['GET', 'POST'], endpoint='add_school')
 @login_required
 @admin_only
@@ -67,6 +63,7 @@ def add_school():
     return render_template('add_school.html', form=form)
 
 
+# add a new student
 @app.route("/add_student", methods=['GET', 'POST'])
 @login_required
 def add_student():
@@ -110,7 +107,7 @@ def add_student():
             return redirect(url_for('add_student'))
     return render_template('add_student.html', form=form)
 
-
+# add a new test
 @app.route("/add_test", methods=['GET', 'POST'], endpoint='add_test')
 @login_required
 @admin_only
@@ -135,8 +132,6 @@ def add_test():
     return render_template('add_test.html', form=form)
 
 
-
-
 #  A student that went to regular testing but has not passed yet is put in limbo
 @app.route('/add_to_limbo', methods=['POST'], endpoint="add_to_limbo")
 @login_required
@@ -155,6 +150,8 @@ def add_to_limbo():
 
     return redirect(url_for('first_pass'))
 
+
+# add a student to the regular test
 @app.route('/add_to_test/<testid>', methods=['POST'])
 @login_required
 def add_to_test(testid):
@@ -184,7 +181,7 @@ def add_to_test(testid):
 
     return redirect(url_for('choose_testers'))
 
-
+#add an instructor or instructor designated user
 @app.route("/add_user", methods=['GET', 'POST'], endpoint='add_user')
 @login_required
 @admin_only
@@ -214,8 +211,11 @@ def add_user():
             return redirect(url_for('options'))
     return render_template('add_user.html', form=form)
 
-@app.route("/choose_high_ranks", methods=['GET','POST'])
+# chooses all testing students who are at least master rank and who are not currently testing up
+# used to mark someone as testing up
+@app.route("/choose_high_ranks", methods=['GET','POST'], endpoint="choose_high_ranks")
 @login_required
+@admin_only
 def choose_high_ranks():
     test = Test.query.order_by(Test.id.desc()).first()
     high_ranks = []
@@ -226,8 +226,11 @@ def choose_high_ranks():
     high_ranks.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('choose_high_ranks.html', high_ranks=high_ranks)
 
-@app.route("/master_list", methods=['GET','POST'])
+
+# makes a list of all students at the third test and displays a check-in list
+@app.route("/master_list", methods=['GET','POST'], endpoint="master_list")
 @login_required
+@admin_only
 def master_list():
     test = Test.query.order_by(Test.id.desc()).first()
     high_ranks = []
@@ -247,6 +250,8 @@ def master_list():
     return render_template('master_list.html', high_ranks=high_ranks, rows=rows)
 
 
+# makes a list of all masters currently marked as testing up  -  Instructors only see their own students
+# used to remove student from testing up list
 @app.route("/choose_testing_up", methods=['GET','POST'])
 @login_required
 def choose_testing_up():
@@ -263,6 +268,8 @@ def choose_testing_up():
     return render_template('choose_testing_up.html', testing_up=testing_up)
 
 
+# choose from all instructors
+# used to edit instructor
 @app.route("/choose_instructor", methods=['GET','POST'], endpoint='choose_instructor')
 @login_required
 @admin_only
@@ -275,7 +282,8 @@ def choose_instructor():
     
     return render_template('choose_instructor.html', instructor_list=instructors)
 
-
+# choose from all schools
+# used to edit schools
 @app.route("/choose_school", methods=['GET','POST'], endpoint='choose_school')
 @login_required
 @admin_only
@@ -288,6 +296,8 @@ def choose_school():
     
     return render_template('choose_school.html', school_list=schools)
 
+# choose from all students - Instructors see only their students
+# used to edit students
 @app.route("/choose_student", methods=['GET','POST'])
 @login_required
 def choose_student():
@@ -302,6 +312,9 @@ def choose_student():
     
     return render_template('choose_student.html', student_list=students)
 
+
+# choose a student who is testing
+# used to edit student test info
 @app.route("/choose_student_test", methods=['GET','POST'],endpoint="choose_student_test")
 @login_required
 @admin_only
@@ -316,23 +329,30 @@ def choose_student():
     
     return render_template('choose_student_test.html', student_list=student_list)
 
+
+# choose from all current students - Instructors see only their own students
+# used to mark students for testing
 @app.route("/choose_testers", methods=['GET','POST'])
 @login_required
 def choose_testers():
     test = Test.query.order_by(Test.id.desc()).first()
     testing_set = {student.student_id for student in test.students}
-    current_students = Student.query.filter_by(current=True).order_by(Student.last_name, Student.first_name).all()
+    if current_user.role == 'admin':
+        current_students = Student.query.filter_by(current=True).order_by(Student.last_name, Student.first_name).all()   #  filter_by(current=True)
+    else:
+        current_students = Student.query.filter_by(school_id=current_user.school_id).filter_by(current=True).order_by(Student.last_name, Student.first_name).all()
     students = [student for student in current_students if student.id not in testing_set]
     return render_template('choose_testers.html', student_list=students)
 
 
+# extra page to be sure admin has marked non-passers and wants to update ranks of the rest of the testers and add to pass list
 @app.route("/confirm_first_update", methods=['GET','POST'], endpoint='confirm_first_update')
 @login_required
 @admin_only
 def confirm_first_update():
     return render_template('confirm_first_update.html')
 
-
+# edit instructor info
 @app.route("/edit_instructor/<userid>", methods=['GET', 'POST'], endpoint='edit_instructor')
 @login_required
 @admin_only
@@ -378,6 +398,8 @@ def edit_instructor(userid):
     
     return render_template('edit_instructor.html', form=form)
 
+
+# edit school info
 @app.route("/edit_school/<schoolid>", methods=['GET', 'POST'], endpoint='edit_school')
 @login_required
 @admin_only
@@ -403,7 +425,7 @@ def edit_school(schoolid):
     
     return render_template('edit_school.html', form=form)
 
-
+# edit student info
 @app.route("/edit_student/<studentid>", methods=['GET', 'POST'])
 @login_required
 def edit_student(studentid):   
@@ -440,7 +462,8 @@ def edit_student(studentid):
     form.school_id.data = student.school_id
     form.current.data = student.current
     return render_template('edit_student.html', form=form)
-    
+
+# edit student test info
 @app.route("/edit_student_test/<studentid>", methods=['GET', 'POST'],endpoint="edit_student_test")
 @login_required
 @admin_only
@@ -515,7 +538,7 @@ def edit_student_test(studentid):
     form.level.data = student_test.level
     return render_template('edit_student_test.html', form=form, studentname=studentname)
     
-
+# edit test info
 @app.route("/edit_test", methods=['GET', 'POST'], endpoint='edit_test')
 @login_required
 @admin_only
@@ -559,7 +582,8 @@ def edit_test():
     return render_template('edit_test.html', form=form)
 
 
-
+# list all testers
+# used to mark those students who have not yet passed
 @app.route("/first_pass", methods=['GET','POST'], endpoint='first_pass')
 @login_required
 @admin_only
@@ -570,6 +594,7 @@ def first_pass():
     students.sort(key = lambda x: (x.last_name, x.first_name))
     return render_template('first_pass.html', student_list=students)
 
+# updates rank of passing testers and adds to pass list
 @app.route("/first_update_rank", methods=['GET','POST'], endpoint='first_update_rank')
 @login_required
 @admin_only
@@ -590,6 +615,8 @@ def first_update_rank():
     flash("Ranks have been updated.")
     return redirect(url_for('options'))
 
+# list of all regular testers that have not yet passed
+# used to update rank of testers and add to pass list
 @app.route("/indiv_first_update", methods=['GET','POST'], endpoint='indiv_first_update')
 @login_required
 @admin_only
@@ -600,12 +627,15 @@ def indiv_first_update():
     students.sort(key= lambda x: (x.last_name, x.first_name))
     return render_template('indiv_first_update.html', student_list=students)
 
+
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# list all makeup testers
+# used to mark those students who HAVE passed
 @app.route("/makeup_pass", methods=['GET','POST'], endpoint='makeup_pass')
 @login_required
 @admin_only
@@ -616,6 +646,7 @@ def makeup_pass():
     students.sort(key= lambda x: (x.last_name, x.first_name))
     return render_template('makeup_pass.html', student_list=students)
 
+# moves chosen testers to makeup test
 @app.route('/move_to_makeup', methods=['POST'], endpoint="move_to_makeup")
 @login_required
 @admin_only
@@ -640,6 +671,8 @@ def move_to_makeup():
 def options():
     return render_template('options.html')
 
+# marks testers that have not yet passed as pass or move to makeup
+# passers rank is updated and they are added to pass list
 @app.route('/pass_indiv', methods=['POST'], endpoint="pass_indiv")
 @login_required
 @admin_only
@@ -671,7 +704,7 @@ def pass_indiv():
     flash("Individual students have been updated.")
     return redirect(url_for('options'))
 
-
+# updates rank of passing makeup testers and adds to pass list
 @app.route('/pass_makeups', methods=['POST'], endpoint="pass_makeups")
 @login_required
 @admin_only
@@ -706,6 +739,7 @@ def pass_makeups():
     flash("Passing Makeup students have been updated.")
     return redirect(url_for('options'))
 
+# reorders certificate list juniors first, then by rank, school, last, first names
 @app.route('/order_certif_list', methods=['POST','GET'], endpoint="order_certif_list")
 @login_required
 @admin_only
@@ -725,7 +759,7 @@ def sortlist(templist):
     templist = sorted(templist, key = lambda x: [x[5], x[4]])
     return templist
 
-
+# reorders pass list and makeup pass list by juniors first, then rank, new - recert - pretest, last, first naes
 @app.route('/order_pass_list/<testtype>', methods=['POST','GET'], endpoint="order_pass_list")
 @login_required
 @admin_only
@@ -769,7 +803,7 @@ def order_pass_list(testtype):
     return redirect(url_for('options'))
 
 
-
+# Counts how many students are doing 1, 2 or 3 patterns in the first 2 tests
 @app.route('/pattern_count')
 @login_required
 def pattern_count():
@@ -790,17 +824,12 @@ def pattern_count():
         two = len([student for student in adultrank if student.recerts == 1])
         three = len(adultrank) - one - two
         adult_patterns.append([one, two, three])
-        
-        # for recert in range(0,3):
-        #     junior = [student for student in juniors if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]
-        #     if junior:
-        #         patterns = len(junior)
-        #     else:
-        #         patterns = 0
-        #     junior_patterns[rank].append(patterns)
-        #     adult_patterns[rank].append(len([student for student in adults if student.rank == rank and recert <= student.recerts <= (3*recert**2 - recert)//2]))
+      
     return render_template('pattern_count.html', adult_patterns=adult_patterns, junior_patterns=junior_patterns, ranks=ranks)
 
+
+# lists all testers by rank, recerts, level
+# used as a check against papers
 @app.route('/view_test')
 @login_required
 def view_test():
@@ -823,7 +852,8 @@ def view_test():
  
     return render_template('view_test.html', juniortesters=juniortesters, adulttesters=adulttesters)
 
-
+# list of all students passing makeup
+# used to remove a student from makeup pass list
 @app.route("/remove_makeup", methods=['GET','POST'], endpoint='remove_makeup')
 @login_required
 @admin_only
@@ -840,7 +870,8 @@ def remove_makeup():
     
     return render_template('remove_pass.html', student_list=students)
 
-
+# list of all students passing first test
+# used to remove a student from pass list
 @app.route("/remove_pass", methods=['GET','POST'], endpoint='remove_pass')
 @login_required
 @admin_only
@@ -857,6 +888,7 @@ def remove_pass():
     
     return render_template('remove_pass.html', student_list=students)
 
+# removes a student from pass list or makeup pass list, and certif list if needed, and down ranks them
 @app.route("/remove_student/<testtype>/<studentid>", methods=['GET','POST'], endpoint='remove_student')
 @login_required
 @admin_only
@@ -903,7 +935,8 @@ def remove_student(testtype, studentid):
     flash("Student has been removed from pass list.")
     return redirect(url_for('options'))
 
-
+# makes a count of how many students are at each test (regular and makeup are separate)
+# info is put in a file in TestCount directory
 @app.route('/test_count/<testid>')
 @login_required
 def test_count(testid):
@@ -960,15 +993,18 @@ def test_count(testid):
     flash("Count of Testing has been made.")
     return redirect(url_for('options'))
     
-
+# couts the number of students in a list with the given rank
+# 3rd dans do not count testers
 def count(students, rank):
     if rank != 3:
         return len([student for student in students if student.rank == rank])
     return len([student for student in students if (student.rank == rank and student.recerts != 6)])
 
+# counts 3rd dan testers in a list of testers
 def count36(students, rank):
     return len([student for student in students if (student.rank == rank and student.recerts == 6)])
 
+# Writes Headings for test_count
 def write_rank(filename, rank, junior, adult, test):
     titles = ['TRIPLE STRIPES', '1ST DANS', '2ND DANS', '3RD DANS', '4TH DANS', '5TH DANS', '6TH DANS','7TH DANS','8TH DANS','9TH DANS']
     if test and junior + adult > 0:
@@ -980,6 +1016,7 @@ def write_rank(filename, rank, junior, adult, test):
     if adult > 0:
         write_to_file(filename, ["Adults: " + str(adult)])
 
+# marks a given student as testing up
 @app.route('/test_up', methods=['POST'])
 @login_required
 def test_up():
@@ -992,10 +1029,12 @@ def test_up():
             test = Test.query.order_by(Test.id.desc()).first()
             student_testing = StudentTest.query.filter_by(student_id=studentid).filter_by(test_id=test.id).first()
             student_testing.testing_up = True
+            # set student.extra to old number of recerts in case we need to reverse
             student.extra = str(student.recerts)        
             db.session.commit()
     return redirect(url_for('choose_high_ranks'))
 
+# remove a chosen student from testing up - reinstate old recerts
 @app.route('/remove_test_up', methods=['POST'])
 @login_required
 def remove_test_up():
@@ -1011,6 +1050,7 @@ def remove_test_up():
             db.session.commit()
     return redirect(url_for('choose_testing_up'))
 
+# takes current rank and returns previous rank
 def undo_update_rank(student_test, student):
     if student_test.testing_up:
         return student.rank - 1, int(student.extra)
@@ -1018,7 +1058,7 @@ def undo_update_rank(student_test, student):
         return student.rank, student.recerts - 1
     return student.rank - 1, (student.rank - 1) * 2
     
-
+# takes current rank and returns next rank
 def update_rank(student_test, student):
     if student.rank >= 4:
         if student_test.testing_up:
@@ -1028,8 +1068,62 @@ def update_rank(student_test, student):
         return student.rank + 1, 0
     return student.rank, student.recerts + 1
 
+# writes a row to the given file
 def write_to_file(filename, row):
     with open(filename, 'a', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',')
         spamwriter.writerow(row)
     return
+
+
+#User changes own password
+@app.route('/change_password', methods=['GET','POST'])
+@fresh_login_required
+def change_password():
+    form=PasswordForm()
+    if form.validate_on_submit():
+        if not current_user.check_password(form.oldpassword.data):
+            flash("Password is incorrect.  Try again or request a new password sent from the login page.")
+            return redirect(url_for('change_password'))
+        current_user.set_password(form.password.data)
+        db.session.commit()
+        flash("Password was successfully changed.")
+        return redirect(url_for('options'))
+
+    return render_template('change_password.html',form=form)
+
+
+#  *****!!  NOT SET UP
+#user requests password reset
+@app.route('/reset_password', methods=['GET','POST'])
+def reset_password():
+    form=EmailForm()
+#     if form.validate_on_submit():
+#         uemail=form.email.data
+#         user=User.query.filter_by(email=uemail).first()
+#         if not user:
+#             flash("This is not a valid email address.")
+#             return redirect('/reset_password')
+#         temp=''.join([choice(string.ascii_lowercase + string.digits) for _ in range(8)])
+#         user.set_password(temp)
+#         db.session.commit()
+
+# # ##Be sure to add real website
+
+#         sender='ybblkblt@yahoo.com'
+#         recipient=user.email
+
+#         content=f"From the Young Brothers Black Belt Test site at   https://\n\n     Your Young Brothers username is: {user.email}\n     Your temporary password is: {temp}\n\nPlease log in and change your password."
+#         header='To:'+recipient+'\nFrom:'+sender+'\nsubject:YOung Brothers Black Belt Test Site\n\n'
+        # content=header + content
+        # mail=smtplib.SMTP('smtp.gmail.com', 587)
+        # mail.ehlo()
+        # mail.starttls()
+        # mail.login(sender,os.environ.get('API_KEY'))
+        # mail.sendmail(sender, recipient, content)
+        # mail.close()
+
+        # flash('Check your email and come back to log in and change your password.')
+        # return redirect(url_for('login'))
+
+    return render_template('reset_password.html', form=form)
