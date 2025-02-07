@@ -1076,6 +1076,24 @@ def write_to_file(filename, row):
     return
 
 
+# choose from all students in Archive
+# used to reinstate student to current
+@app.route("/choose_archived", methods=['GET','POST'], endpoint="choose_archived")
+@login_required
+@admin_only
+def choose_archived():
+    students = Student.query.filter_by(current=False).order_by(Student.last_name, Student.first_name).all()   #  filter_by(current=True)   
+    if request.method == "POST":
+        studentid = request.form['studentid']
+        studentid=studentid.strip(')').strip('(')
+        student = Student.query.filter_by(id=int(studentid)).first()
+        student.current = True
+        db.session.commit()
+        flash(f"{student.first_name} {student.last_name} has been reinstated.")
+        return redirect(url_for('options'))
+    
+    return render_template('choose_archived.html', student_list=students)
+
 #User changes own password
 @app.route('/change_password', methods=['GET','POST'])
 @fresh_login_required

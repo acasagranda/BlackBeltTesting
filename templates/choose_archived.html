@@ -1,0 +1,23 @@
+{% extends "layout2.html" %}
+
+{% block title %}
+    Choose Student from Archive
+{% endblock %}
+
+{% block main %}
+    <br><br>
+    <div class="center">
+        <h1>Choose Student to move from Archive to Current:</h1>
+        <form method="POST" action="">
+            <select name="studentid" id="student-select" style="width: 25%">
+                <option value="">--Choose a student:--</option>
+                {% for student in student_list %}
+                    <option value="({{ student.id }})">{{ student.last_name }}, {{ student.first_name }} : {{ student.rank }} {{ student.recerts }}</option>
+                {% endfor %}
+            </select>
+            <br><br><br>
+            <input type="submit" value="Move this Student.">
+        </form>
+        <br><br>
+    </div>
+{% endblock %}
